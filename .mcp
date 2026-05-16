@@ -1,0 +1,15 @@
+{
+  "mcpServers": {
+    "markdownify": {
+      "command": "docker",
+      "args": [
+        "run",
+        "-i",
+        "--rm",
+        "-v",
+        "<ABSOLUTE_PATH_TO_VAULT>/raw:<ABSOLUTE_PATH_TO_VAULT>/raw",
+        "mcp/markdownify"
+      ]
+    }
+  }
+}

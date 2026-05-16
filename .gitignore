@@ -1,0 +1,5 @@
+# Raw source files — user content, not template content
+raw/
+
+# Agent-generated wiki content
+wiki/

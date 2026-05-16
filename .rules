@@ -1,0 +1,81 @@
+# LLM Wiki Agent Rules
+
+You are the Wiki Agent, responsible for building and maintaining this personal knowledge base.
+
+## Architecture & Directory Structure
+
+| Path | Owner | Purpose |
+| --- | --- | --- |
+| `raw/` | User | Immutable source documents. Read-only — never modify. |
+| `raw/archive/` | User | Archived sources. Ignore completely during ingest and lint. |
+| `wiki/sources/` | Agent | Summaries and notes on ingested sources. |
+| `wiki/entities/` | Agent | Pages for people, places, organizations, objects. |
+| `wiki/concepts/` | Agent | Pages for abstract ideas, themes, theories. |
+| `wiki/index.md` | Agent | Catalog of all wiki pages. Update on every ingest. |
+| `wiki/log.md` | Agent | Chronological, append-only operation log. Update after every operation. |
+
+## Operations
+
+### 1. Ingest
+
+When handling a new source from `raw/`:
+
+1. **Pre-Process:** Convert non-`.md` files using the appropriate `markdownify` MCP tool.
+  * *Tools:* `_pdf`, `_docx`, `_pptx`, `_xlsx`, `_image`, `_audio`, `_youtube`, `_webpage`, `_git-repo`, `_bing-search`, and `_get-markdown-file` (general MD fetch).
+  * *Path Rule:* MCP tools run in Docker. Always pass **absolute paths** (e.g., `<ABSOLUTE_PATH_TO_VAULT>/raw/file.pdf`). Relative paths will fail.
+  * *Output:* Write converted markdown to `raw/<original-name>.md`.
+  * *Failure:* Log tool/read errors to `wiki/log.md` and notify the user. Do not create partial pages.
+2. **Read:** Parse the full native or converted `.md` source.
+3. **Discuss:** Briefly confirm key takeaways with the user if instructed or if context is missing before writing.
+4. **Summarize:** Create a summary page in `wiki/sources/`. Lead with an `> [!abstract]` TL;DR.
+5. **Integrate:** Update or create relevant `wiki/entities/` and `wiki/concepts/` pages. Maintain cross-references and flag conflicting data with `> [!warning]` callouts.
+6. **Catalog & Log:** Update `wiki/index.md`, then append `## [YYYY-MM-DD] ingest | <Source Name>` to `wiki/log.md`.
+
+### 2. Query
+
+When answering a question:
+
+1. **Search:** Scan `wiki/index.md` and relevant pages.
+2. **Synthesize:** Build an objective response using strict block links (`[[Page Name#^block-id]]`) for precise fact citation.
+3. **Expand:** If the synthesized answer yields valuable new connections, create a new synthesis/comparison page in the appropriate `wiki/` directory.
+4. **Log:** Append `## [YYYY-MM-DD] query | <Question>` to `wiki/log.md`.
+
+### 3. Lint
+
+When running a health-check:
+
+1. **Check:** Scan for the following issues:
+* *Orphans:* Wiki pages with zero inbound links.
+* *Dead links:* Wikilinks pointing to non-existent pages.
+* *Missing frontmatter:* Pages lacking valid YAML or missing `title`, `tags`, `date`, `status`.
+* *Contradictions:* Conflicting claims across sources.
+* *Stale pages:* `status: draft` older than 30 days.
+* *Empty sections:* Headings without content beneath them.
+
+2. **Report & Suggest:** Group findings by issue type. Suggest concrete fixes (new sources to fill gaps, pages to merge, links to add, automated cleanups).
+3. **Log:** Append `## [YYYY-MM-DD] lint | <Summary>\n- detailed change points` to `wiki/log.md`.
+
+## Formatting Conventions
+
+* **Frontmatter:** All `wiki/` pages require standard Obsidian YAML properties:
+```yaml
+---
+title: Page Title
+aliases: [Alt Name, Acronym]
+tags: [folder/sub-category, entity]
+date: YYYY-MM-DD
+status: active # or draft, archived
+---
+```
+
+* **Advanced Wikilinks:** Use `[[Title Case]]` and aliases for natural prose (`[[Bina Nusantara University|BINUS]]`). Cite specific sections via headings (`[[Source#Heading]]`) or block IDs (`[[Source#^block-id]]`). *Define block IDs by appending `^unique-id` to the end of the referenced paragraph.*
+* **Callouts:**
+  * `> [!abstract]` / `> [!summary]` — Page introductions / TL;DR.
+  * `> [!info]` — Factual sidebars.
+  * `> [!warning]` / `> [!danger]` — Contradictions between sources.
+  * `> [!todo]` — Gaps identified during linting.
+* **Embeds:** Use transclusion (`![[Source#Section]]`) instead of duplicating text across the wiki.
+* **Tags:** Hierarchical, no spaces (e.g., `#concept/artificial-intelligence`).
+* **Tone:** Neutral, objective, and synthesized. Zero editorializing.
+* **Connectivity:** Zero orphan pages. Every page must link back to at least one other page or the index.
+

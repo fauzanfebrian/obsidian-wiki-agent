@@ -1,0 +1,55 @@
+# Obsidian Wiki Agent
+
+An Obsidian vault template designed for AI-assisted knowledge management. Drop raw sources (PDFs, audio, docs, URLs) into `raw/`, and an LLM agent converts, summarizes, and cross-references them into a structured wiki.
+
+## How It Works
+
+```
+raw/              ← You drop files here (immutable, agent never modifies)
+wiki/
+  sources/        ← Agent-generated summaries of raw sources
+  entities/       ← People, places, organizations, objects
+  concepts/       ← Abstract ideas, themes, theories
+  index.md        ← Catalog of all wiki pages
+  log.md          ← Chronological operation log
+```
+
+The agent follows the rules in `.rules` and uses the [Markdownify MCP server](https://hub.docker.com/r/mcp/markdownify) (via Docker) to convert non-markdown files before ingestion.
+
+## Setup
+
+**Prerequisites:** [Docker](https://www.docker.com/) installed and running.
+
+```bash
+git clone https://github.com/fauzanfebrian/obsidian-wiki-agent my-vault
+cd my-vault
+./init.sh
+```
+
+`init.sh` will:
+- Create the directory structure (`raw/`, `wiki/` subdirs).
+- Scaffold `wiki/index.md` and `wiki/log.md` if missing.
+- Generate a `.gitignore` that excludes raw file contents and Obsidian session state.
+- Replace `<ABSOLUTE_PATH_TO_VAULT>` placeholders in `.mcp` and `.rules` with your actual path.
+
+Then:
+1. Point your AI IDE to the `.mcp` file for MCP configuration.
+2. Open the folder in Obsidian.
+
+## Usage
+
+Tell your agent:
+
+- `"Ingest the PDF in raw/"` — converts, summarizes, and cross-references.
+- `"Summarize this YouTube video: [URL]"` — fetches transcript, creates source + concept pages.
+- `"Lint the wiki"` — checks for orphan pages, dead links, contradictions, missing frontmatter.
+- `"What do we know about X?"` — synthesizes an answer from existing wiki pages.
+
+## Files
+
+| File | Purpose |
+|------|---------|
+| `.rules` | Agent instructions: operations, formatting, directory ownership. |
+| `.mcp` | MCP server config (Markdownify via Docker). |
+| `init.sh` | One-time setup script. |
+| `.obsidian/` | Obsidian settings (graph colors, core plugins). |
