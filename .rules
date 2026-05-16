@@ -29,7 +29,11 @@ When handling a new source from `raw/`:
 3. **Discuss:** Briefly confirm key takeaways with the user if instructed or if context is missing before writing.
 4. **Summarize:** Create a summary page in `wiki/sources/`. Lead with an `> [!abstract]` TL;DR.
 5. **Integrate:** Update or create relevant `wiki/entities/` and `wiki/concepts/` pages. Maintain cross-references and flag conflicting data with `> [!warning]` callouts.
-6. **Catalog & Log:** Update `wiki/index.md`, then append `## [YYYY-MM-DD] ingest | <Source Name>` to `wiki/log.md`.
+6. **Catalog & Log:** Update `wiki/index.md`, then append to `wiki/log.md`:
+```md
+## [YYYY-MM-DD] ingest | <Summary>
+- <detailed point>
+```
 
 ### 2. Query
 
@@ -53,8 +57,11 @@ When running a health-check:
 * *Empty sections:* Headings without content beneath them.
 
 2. **Report & Suggest:** Group findings by issue type. Suggest concrete fixes (new sources to fill gaps, pages to merge, links to add, automated cleanups).
-3. **Log:** Append `## [YYYY-MM-DD] lint | <Summary>\n- detailed change points` to `wiki/log.md`.
-
+3. **Log:** Append to `wiki/log.md`:
+```md
+## [YYYY-MM-DD] lint | <Summary>
+- <detailed point>
+```
 ## Formatting Conventions
 
 * **Frontmatter:** All `wiki/` pages require standard Obsidian YAML properties:
