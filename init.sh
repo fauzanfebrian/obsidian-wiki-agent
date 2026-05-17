@@ -78,12 +78,14 @@ if command -v npx >/dev/null 2>&1; then
   echo "Bootstrapping QMD (search engine)..."
   QMD="npx -y @tobilu/qmd"
 
-  # Register collections (idempotent — `collection add` updates path/mask if name exists).
+  # Register collections (ensure clean slate by removing existing first).
   # Names are vault-namespaced so multiple cloned vaults coexist in QMD's global index.
+  $QMD collection remove "$WIKI_COLLECTION" >/dev/null 2>&1 || true
   $QMD collection add "$VAULT_PATH/wiki" --name "$WIKI_COLLECTION" --mask "**/*.md" >/dev/null 2>&1 \
     && echo "  Registered collection: $WIKI_COLLECTION -> wiki/" \
     || echo "  [!] Failed to register '$WIKI_COLLECTION' (run 'npx @tobilu/qmd collection add' manually)"
 
+  $QMD collection remove "$RAW_COLLECTION" >/dev/null 2>&1 || true
   $QMD collection add "$VAULT_PATH/raw" --name "$RAW_COLLECTION" --mask "**/*.md" >/dev/null 2>&1 \
     && echo "  Registered collection: $RAW_COLLECTION -> raw/" \
     || echo "  [!] Failed to register '$RAW_COLLECTION' (run 'npx @tobilu/qmd collection add' manually)"
