@@ -39,7 +39,7 @@ cd my-vault
 - Register two QMD collections (`wiki`, `raw`) and seed their path contexts.
 
 Then:
-1. Point your AI IDE to the `.mcp` file for MCP configuration (Markdownify + QMD).
+1. Point your AI IDE to the `.mcp` file for MCP configuration (Markdownify).
 2. Open the folder in Obsidian.
 3. After dropping your first sources into `raw/`, build the search index:
    ```bash
@@ -69,6 +69,6 @@ npx @tobilu/qmd status
 | File | Purpose |
 |------|---------|
 | `.rules` | Agent instructions: operations, formatting, directory ownership, tool usage. |
-| `.mcp` | MCP server config (Markdownify via Docker, QMD via npx). |
+| `.mcp` | MCP server config (Markdownify via Docker). |
 | `init.sh` | One-time setup script (paths, scaffolding, QMD bootstrap). |
 | `.obsidian/` | Obsidian settings (graph colors, core plugins). |

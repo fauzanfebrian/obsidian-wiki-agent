@@ -90,8 +90,8 @@ QMD's index is global per machine (`~/.cache/qmd/index.sqlite`), so collection n
 **Workflow integration:**
 - *Query (primary):* `npx @tobilu/qmd query "<question>" -c <QMD_WIKI_COLLECTION>` — hybrid search with reranking. Default `-n 10`. Use `--json --files --min-score 0.3` when feeding many results to subsequent reasoning. Always cross-check with `wiki/index.md` for coverage.
 - *Ingest (mandatory re-index):* end every ingest with `npx @tobilu/qmd update`. Add `npx @tobilu/qmd embed` when pages were materially rewritten or many new pages were added.
-- *Lint:* use `qmd query --all --min-score 0.4` to surface duplicates and contradictions; use `qmd status` to compare on-disk pages with the index.
-- *Cross-source ingest:* before writing a new entity/concept page, run `qmd query "<entity>" -c <QMD_WIKI_COLLECTION>` to confirm no existing page should be updated instead of created — this prevents duplicate pages and preserves cross-references.
+- *Lint:* use `npx @tobilu/qmd query --all --min-score 0.4` to surface duplicates and contradictions; use `npx @tobilu/qmd status` to compare on-disk pages with the index.
+- *Cross-source ingest:* before writing a new entity/concept page, run `npx @tobilu/qmd query "<entity>" -c <QMD_WIKI_COLLECTION>` to confirm no existing page should be updated instead of created — this prevents duplicate pages and preserves cross-references.
 
 **Preferred commands (always prefix with `npx @tobilu/qmd`):**
 - `query "<question>" -c <QMD_WIKI_COLLECTION>|<QMD_RAW_COLLECTION> [-n 10] [--min-score 0.3]` — hybrid retrieval. Best default.
@@ -104,8 +104,6 @@ QMD's index is global per machine (`~/.cache/qmd/index.sqlite`), so collection n
 - `status` — health check. Run first if any QMD command behaves unexpectedly.
 
 **Citation rule:** QMD is a discovery tool. Once a relevant page is found, cite it with wikilinks (`[[Page Name#^block-id]]`). Never cite QMD docids in wiki content — they are not stable across re-indexes.
-
-**MCP transport:** when an MCP-capable agent host is running, the `qmd` MCP server (configured in `.mcp`) exposes `query`, `get`, `multi_get`, and `status` natively. Prefer the MCP tools over shelling out when available; the CLI is the universal fallback.
 
 ## Formatting Conventions
 
