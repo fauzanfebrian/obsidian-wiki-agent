@@ -14,6 +14,8 @@ You are the Wiki Agent, responsible for building and maintaining this personal k
 | `wiki/index.md` | Agent | Catalog of all wiki pages. Update on every ingest. |
 | `wiki/log.md` | Agent | Chronological, append-only operation log. Update after every operation. |
 
+The wiki is a **persistent, compounding artifact**. Every ingest enriches it; every query may produce a new synthesis page. Knowledge is compiled once and kept current — never re-derived from scratch on each question. You write none of the wiki. The agent owns all writes inside `wiki/`.
+
 ## Operations
 
 ### 1. Ingest
@@ -34,15 +36,17 @@ When handling a new source from `raw/`:
 ## [YYYY-MM-DD] ingest | <Summary>
 - <detailed point>
 ```
+7. **Re-index (mandatory):** Run `npx @tobilu/qmd update` so new/changed wiki pages are searchable. When content changed substantially or many new pages were added, also run `npx @tobilu/qmd embed` to refresh vector embeddings.
 
 ### 2. Query
 
 When answering a question:
 
-1. **Search:** Scan `wiki/index.md` and relevant pages.
-2. **Synthesize:** Build an objective response using strict block links (`[[Page Name#^block-id]]`) for precise fact citation.
-3. **Expand:** If the synthesized answer yields valuable new connections, create a new synthesis/comparison page in the appropriate `wiki/` directory.
-4. **Log:** Append `## [YYYY-MM-DD] query | <Question>` to `wiki/log.md`.
+1. **Search:** Use QMD as the primary retrieval tool (see *Tools*). Start with `npx @tobilu/qmd query "<question>" -c <QMD_WIKI_COLLECTION>` to find candidate pages, then read full pages with `qmd get` for citation. Cross-check against `wiki/index.md` to confirm coverage and surface adjacent pages QMD may have missed.
+2. **Synthesize:** Build an objective response using strict block links (`[[Page Name#^block-id]]`) for precise fact citation. Never cite QMD docids — they are not stable across re-indexes.
+3. **Expand:** If the synthesized answer yields valuable new connections, create a new synthesis/comparison page in the appropriate `wiki/` directory. Good answers compound back into the wiki — they should not disappear into chat history.
+4. **Re-index:** If a new page was created in step 3, run `npx @tobilu/qmd update`.
+5. **Log:** Append `## [YYYY-MM-DD] query | <Question>` to `wiki/log.md`.
 
 ### 3. Lint
 
@@ -52,16 +56,57 @@ When running a health-check:
 * *Orphans:* Wiki pages with zero inbound links.
 * *Dead links:* Wikilinks pointing to non-existent pages.
 * *Missing frontmatter:* Pages lacking valid YAML or missing `title`, `tags`, `date`, `status`.
-* *Contradictions:* Conflicting claims across sources.
+* *Contradictions:* Conflicting claims across sources. Use `npx @tobilu/qmd query "<claim>" -c <QMD_WIKI_COLLECTION> --all --min-score 0.4` to surface every page touching a claim, then compare.
 * *Stale pages:* `status: draft` older than 30 days.
 * *Empty sections:* Headings without content beneath them.
+* *Topic gaps:* Concepts mentioned across multiple sources but lacking a dedicated `wiki/concepts/` page. Surface candidates with `qmd query` over recurring terms.
+* *Index drift:* Pages on disk that are absent from `wiki/index.md`, or index entries pointing to deleted pages.
 
 2. **Report & Suggest:** Group findings by issue type. Suggest concrete fixes (new sources to fill gaps, pages to merge, links to add, automated cleanups).
-3. **Log:** Append to `wiki/log.md`:
+3. **Re-index:** Run `npx @tobilu/qmd update` (and `qmd embed` if pages were edited).
+4. **Log:** Append to `wiki/log.md`:
 ```md
 ## [YYYY-MM-DD] lint | <Summary>
 - <detailed point>
 ```
+## Tools
+
+### QMD (mandatory search engine)
+
+[QMD](https://github.com/tobi/qmd) is the **default and required** retrieval tool for this vault. It runs entirely on-device (BM25 + vector + LLM rerank) and is invoked via `npx @tobilu/qmd ...` so no global install is needed. Prerequisite: Node.js >= 22.
+
+If `npx @tobilu/qmd status` fails, **stop and surface the error to the user** — do not silently fall back. The vault assumes QMD is operational.
+
+**Collections (registered by `init.sh`, namespaced per vault):**
+- `<QMD_WIKI_COLLECTION>` → `wiki/` — agent-maintained pages. Primary search target for queries.
+- `<QMD_RAW_COLLECTION>` → `raw/` — original sources for citation lookup and ingest cross-reference. The collection itself does not exclude `raw/archive/**`; **filter archive paths out client-side** when interpreting QMD results, per the `raw/archive/` ownership rule.
+
+QMD's index is global per machine (`~/.cache/qmd/index.sqlite`), so collection names are namespaced with this vault's directory slug. Always use the exact names above — never the bare strings `wiki` or `raw`.
+
+**Path contexts (seeded by `init.sh`):**
+- `qmd://<QMD_WIKI_COLLECTION>` → vault-scoped agent knowledge base description.
+- `qmd://<QMD_RAW_COLLECTION>` → vault-scoped raw sources description.
+
+**Workflow integration:**
+- *Query (primary):* `npx @tobilu/qmd query "<question>" -c <QMD_WIKI_COLLECTION>` — hybrid search with reranking. Default `-n 10`. Use `--json --files --min-score 0.3` when feeding many results to subsequent reasoning. Always cross-check with `wiki/index.md` for coverage.
+- *Ingest (mandatory re-index):* end every ingest with `npx @tobilu/qmd update`. Add `npx @tobilu/qmd embed` when pages were materially rewritten or many new pages were added.
+- *Lint:* use `qmd query --all --min-score 0.4` to surface duplicates and contradictions; use `qmd status` to compare on-disk pages with the index.
+- *Cross-source ingest:* before writing a new entity/concept page, run `qmd query "<entity>" -c <QMD_WIKI_COLLECTION>` to confirm no existing page should be updated instead of created — this prevents duplicate pages and preserves cross-references.
+
+**Preferred commands (always prefix with `npx @tobilu/qmd`):**
+- `query "<question>" -c <QMD_WIKI_COLLECTION>|<QMD_RAW_COLLECTION> [-n 10] [--min-score 0.3]` — hybrid retrieval. Best default.
+- `vsearch "<phrase>" -c <QMD_WIKI_COLLECTION>` — pure semantic search when phrasing differs from likely page wording.
+- `search "<keyword>" -c <QMD_WIKI_COLLECTION>` — fast BM25 when you know the exact term.
+- `get "<path>"` / `get "#<docid>"` — fetch a single document. Use `path:LINE -l N` to read a section (cheaper than reading the whole file).
+- `multi-get "<glob>"` — batch retrieve related pages (e.g. `wiki/concepts/*.md`).
+- `update` — re-scan files into the index. Mandatory after any write to `wiki/` or `raw/`.
+- `embed` — refresh vector embeddings. Run after content edits, not after pure additions.
+- `status` — health check. Run first if any QMD command behaves unexpectedly.
+
+**Citation rule:** QMD is a discovery tool. Once a relevant page is found, cite it with wikilinks (`[[Page Name#^block-id]]`). Never cite QMD docids in wiki content — they are not stable across re-indexes.
+
+**MCP transport:** when an MCP-capable agent host is running, the `qmd` MCP server (configured in `.mcp`) exposes `query`, `get`, `multi_get`, and `status` natively. Prefer the MCP tools over shelling out when available; the CLI is the universal fallback.
+
 ## Formatting Conventions
 
 * **Frontmatter:** All `wiki/` pages require standard Obsidian YAML properties:

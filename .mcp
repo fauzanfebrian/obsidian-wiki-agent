@@ -10,6 +10,10 @@
         "<ABSOLUTE_PATH_TO_VAULT>/raw:<ABSOLUTE_PATH_TO_VAULT>/raw",
         "mcp/markdownify"
       ]
+    },
+    "qmd": {
+      "command": "npx",
+      "args": ["-y", "@tobilu/qmd", "mcp"]
     }
   }
 }

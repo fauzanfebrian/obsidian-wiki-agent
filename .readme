@@ -14,11 +14,16 @@ wiki/
   log.md          ← Chronological operation log
 ```
 
-The agent follows the rules in `.rules` and uses the [Markdownify MCP server](https://hub.docker.com/r/mcp/markdownify) (via Docker) to convert non-markdown files before ingestion.
+The agent follows the rules in `.rules` and uses two tools:
+
+- [Markdownify MCP server](https://hub.docker.com/r/mcp/markdownify) (via Docker) — converts non-markdown sources (PDF, DOCX, audio, YouTube, web pages, …) into markdown before ingestion.
+- [QMD](https://github.com/tobi/qmd) — local hybrid search engine (BM25 + vector + LLM rerank) over the vault. Used by the agent for queries, ingest cross-checks, and lint passes. Invoked via `npx @tobilu/qmd` so no global install is needed.
 
 ## Setup
 
-**Prerequisites:** [Docker](https://www.docker.com/) installed and running.
+**Prerequisites:**
+- [Docker](https://www.docker.com/) installed and running (for Markdownify).
+- [Node.js](https://nodejs.org/) >= 22 (for QMD via `npx`).
 
 ```bash
 git clone https://github.com/fauzanfebrian/obsidian-wiki-agent my-vault
@@ -31,25 +36,39 @@ cd my-vault
 - Scaffold `wiki/index.md` and `wiki/log.md` if missing.
 - Generate a `.gitignore` that excludes raw file contents and Obsidian session state.
 - Replace `<ABSOLUTE_PATH_TO_VAULT>` placeholders in `.mcp` and `.rules` with your actual path.
+- Register two QMD collections (`wiki`, `raw`) and seed their path contexts.
 
 Then:
-1. Point your AI IDE to the `.mcp` file for MCP configuration.
+1. Point your AI IDE to the `.mcp` file for MCP configuration (Markdownify + QMD).
 2. Open the folder in Obsidian.
+3. After dropping your first sources into `raw/`, build the search index:
+   ```bash
+   npx @tobilu/qmd update    # scan files into the index
+   npx @tobilu/qmd embed     # generate vector embeddings (slower, one-time)
+   ```
 
 ## Usage
 
 Tell your agent:
 
-- `"Ingest the PDF in raw/"` — converts, summarizes, and cross-references.
+- `"Ingest the PDF in raw/"` — converts, summarizes, cross-references, and re-indexes via QMD.
 - `"Summarize this YouTube video: [URL]"` — fetches transcript, creates source + concept pages.
-- `"Lint the wiki"` — checks for orphan pages, dead links, contradictions, missing frontmatter.
-- `"What do we know about X?"` — synthesizes an answer from existing wiki pages.
+- `"Lint the wiki"` — checks for orphan pages, dead links, contradictions, missing frontmatter, topic gaps.
+- `"What do we know about X?"` — agent runs `qmd query` against the vault, then synthesizes with citations.
+
+You can also drive QMD yourself:
+
+```bash
+npx @tobilu/qmd query "project timeline" -c wiki
+npx @tobilu/qmd get "wiki/concepts/some-page.md"
+npx @tobilu/qmd status
+```
 
 ## Files
 
 | File | Purpose |
 |------|---------|
-| `.rules` | Agent instructions: operations, formatting, directory ownership. |
-| `.mcp` | MCP server config (Markdownify via Docker). |
-| `init.sh` | One-time setup script. |
+| `.rules` | Agent instructions: operations, formatting, directory ownership, tool usage. |
+| `.mcp` | MCP server config (Markdownify via Docker, QMD via npx). |
+| `init.sh` | One-time setup script (paths, scaffolding, QMD bootstrap). |
 | `.obsidian/` | Obsidian settings (graph colors, core plugins). |
